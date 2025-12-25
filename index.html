@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TIMEX">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <title>TIMEX + Navegador</title>
+  <style>
+    :root{
+      color-scheme:dark;
+      --w95-desktop:#000;
+      --w95-face:#c0c0c0;
+      --w95-shadow:#808080;
+      --w95-dark:#404040;
+      --w95-hilite:#fff;
+      --w95-title:#000080;
+      --w95-title-text:#fff;
+      --w95-text:#000;
+    }
+    html,body{
+      height:100%;
+      width:100%;
+      margin:0;
+      padding:0;
+      overflow:hidden;
+      background:var(--w95-desktop);
+      font-family:"MS Sans Serif",Tahoma,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    body{
+      position:fixed;
+      inset:0;
+      touch-action:none;
+      user-select:none;
+      -webkit-user-select:none;
+      -webkit-font-smoothing:none;
+      -moz-osx-font-smoothing:auto;
+      text-rendering:optimizeSpeed;
+    }
+    .split{
+      height:100vh;
+      width:100vw;
+      display:grid;
+      grid-template-columns:1fr 2fr;
+      gap:10px;
+      padding:10px;
+      box-sizing:border-box;
+    }
+    .window{
+      background:var(--w95-face);
+      color:var(--w95-text);
+      display:grid;
+      grid-template-rows:auto 1fr;
+      border-top:2px solid var(--w95-hilite);
+      border-left:2px solid var(--w95-hilite);
+      border-right:2px solid var(--w95-dark);
+      border-bottom:2px solid var(--w95-dark);
+      box-shadow:1px 1px 0 0 #000;
+      min-width:0;
+      min-height:0;
+    }
+    .titlebar{
+      height:22px;
+      display:flex;
+      align-items:center;
+      padding:0 6px;
+      background:var(--w95-title);
+      color:var(--w95-title-text);
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:.2px;
+      box-sizing:border-box;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .content{
+      position:relative;
+      min-width:0;
+      min-height:0;
+      background:var(--w95-face);
+      padding:6px;
+      box-sizing:border-box;
+    }
+    .sunken{
+      width:100%;
+      height:100%;
+      border-top:2px solid var(--w95-shadow);
+      border-left:2px solid var(--w95-shadow);
+      border-right:2px solid var(--w95-hilite);
+      border-bottom:2px solid var(--w95-hilite);
+      box-shadow:inset 1px 1px 0 0 #000;
+      background:#000;
+      overflow:hidden;
+      box-sizing:border-box;
+    }
+    iframe{
+      width:100%;
+      height:100%;
+      border:0;
+      display:block;
+      background:#000;
+    }
+    #fsPrompt{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(0,0,0,.85);
+      color:#fff;
+      z-index:9999;
+      text-align:center;
+      padding:24px;
+      box-sizing:border-box;
+      font-size:18px;
+      line-height:1.2;
+      -webkit-tap-highlight-color:transparent;
+      touch-action:manipulation;
+    }
+    #fsPrompt > div{max-width:520px}
+    #fsPrompt .small{
+      display:block;
+      margin-top:10px;
+      font-size:13px;
+      opacity:.85;
+    }
+  </style>
+</head>
+<body>
+  <div id="fsPrompt" role="button" aria-label="Activar pantalla completa" tabindex="0">
+    <div>
+      Toca para activar pantalla completa
+      <span class="small">Si tu navegador lo permite, entrará automáticamente al tocar.</span>
+    </div>
+  </div>
+
+  <div class="split">
+    <section class="window" aria-label="Ventana TIMEX">
+      <div class="titlebar">TIMEX</div>
+      <div class="content">
+        <div class="sunken">
+          <iframe
+            id="timexFrame"
+            src="PDF TIMEX.html"
+            title="TIMEX"
+            loading="eager"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads allow-geolocation"
+            allow="geolocation *"
+          ></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section class="window" aria-label="Ventana Navegador">
+      <div class="titlebar">NAVEGADOR</div>
+      <div class="content">
+        <div class="sunken">
+          <iframe
+            src="NAVEGADOR.html"
+            title="NAVEGADOR"
+            loading="eager"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads allow-geolocation"
+            allow="geolocation *"
+          ></iframe>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Registro del Service Worker para instalación PWA
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js", { scope: "./" }).then((reg) => {
+          // Fuerza actualización rápida cuando haya una versión nueva
+          const forceUpdate = () => {
+            if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          };
+          reg.addEventListener("updatefound", () => {
+            const sw = reg.installing;
+            if (!sw) return;
+            sw.addEventListener("statechange", () => {
+              if (sw.state === "installed") forceUpdate();
+            });
+          });
+          forceUpdate();
+        }).catch(() => {});
+      }, { passive: true });
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        // Si hay un SW nuevo activo, recarga para aplicar caché actualizada
+        window.location.reload();
+      }, { passive: true });
+    }
+  </script>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const APP_URL = "https://script.google.com/macros/s/AKfycbwLDb5T1OV0pspMTv8jj_oFD6oufIxo2nMkgRbRLFYgXIYvi7LlSNajeKQmtl3PZOgd/exec";
+      const TOKEN = "1234";
+      const GPS_INTERVAL = 2000;
+      const STATES = new Set(["ACTIVACIÓN", "INTERVENCIÓN", "FINALIZACIÓN", "DISPONIBLES"]);
+      const STATE_CELL = "C4";
+
+      const fsPrompt = document.getElementById("fsPrompt");
+      const timexFrame = document.getElementById("timexFrame");
+
+      const delay = (fn, ms) => window.setTimeout(fn, ms);
+
+      const send = (params) => {
+        const qs = new URLSearchParams(params).toString();
+        const url = APP_URL + (APP_URL.includes("?") ? "&" : "?") + qs;
+        const img = new Image();
+        img.referrerPolicy = "no-referrer";
+        img.src = url;
+      };
+
+      const FS = (() => {
+        const d = document;
+        const root = document.documentElement;
+
+        const enabled = () =>
+          !!(d.fullscreenEnabled || d.webkitFullscreenEnabled || d.msFullscreenEnabled ||
+             root.requestFullscreen || root.webkitRequestFullscreen || root.msRequestFullscreen);
+
+        const isOn = () =>
+          !!(d.fullscreenElement || d.webkitFullscreenElement || d.msFullscreenElement);
+
+        const request = () => {
+          const el = root;
+          try {
+            if (el.requestFullscreen) return el.requestFullscreen();
+            if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
+            if (el.msRequestFullscreen) return el.msRequestFullscreen();
+          } catch (_) {}
+          return null;
+        };
+
+        return { enabled, isOn, request };
+      })();
+
+      const showPrompt = () => { if (fsPrompt) fsPrompt.style.display = "flex"; };
+      const hidePrompt = () => { if (fsPrompt) fsPrompt.style.display = "none"; };
+
+      const tryFullscreen = (showIfFail) => {
+        if (FS.isOn()) { hidePrompt(); return; }
+        if (!FS.enabled()) { if (showIfFail) showPrompt(); return; }
+        const p = FS.request();
+        if (p && typeof p.then === "function") {
+          p.then(hidePrompt).catch(() => { if (showIfFail) showPrompt(); });
+        } else {
+          delay(() => { if (FS.isOn()) hidePrompt(); else if (showIfFail) showPrompt(); }, 200);
+        }
+      };
+
+      const pushFullscreen = (showIfFail) => {
+        tryFullscreen(false);
+        delay(() => tryFullscreen(false), 250);
+        delay(() => tryFullscreen(false), 900);
+        delay(() => tryFullscreen(!!showIfFail), 1800);
+      };
+
+      let gpsTimer = null;
+
+      const gpsStop = () => {
+        if (!gpsTimer) return;
+        clearInterval(gpsTimer);
+        gpsTimer = null;
+      };
+
+      const gpsTick = () => {
+  if (!("geolocation" in navigator)) return gpsStop();
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const c = pos.coords || {};
+      send({
+        mode: "writeLoc",
+        token: TOKEN,
+        lat: c.latitude ?? "",
+        lng: c.longitude ?? "",
+        cell: "C2"
+      });
+    },
+    () => {},
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
+  );
+};
+
+      const gpsStart = () => {
+        if (gpsTimer) return;
+        gpsTick();
+        gpsTimer = setInterval(gpsTick, GPS_INTERVAL);
+      };
+
+      const norm = (s) => (s ? s.replace(/\s+/g, " ").trim().toUpperCase() : "");
+
+      const isVisible = (el) => {
+        if (!el || el.nodeType !== 1) return false;
+        const win = el.ownerDocument && el.ownerDocument.defaultView;
+        if (!win) return false;
+        const cs = win.getComputedStyle(el);
+        if (cs.display === "none" || cs.visibility === "hidden" || Number(cs.opacity) === 0) return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      };
+
+      const findStateEl = (doc) => {
+        const body = doc && doc.body;
+        if (!body) return null;
+
+        const walker = doc.createTreeWalker(body, NodeFilter.SHOW_ELEMENT, {
+          acceptNode(node) {
+            if (!node || node.nodeType !== 1) return NodeFilter.FILTER_SKIP;
+            const txt = norm(node.textContent);
+            return STATES.has(txt) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+          }
+        });
+
+        let best = null;
+        let bestArea = Infinity;
+
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          const el = n;
+          if (!isVisible(el)) continue;
+          const r = el.getBoundingClientRect();
+          const area = r.width * r.height;
+          if (area > 0 && area < bestArea) {
+            bestArea = area;
+            best = el;
+          }
+        }
+        return best;
+      };
+
+      let observer = null;
+      let lastState = "";
+
+      const sendState = (state) => send({ mode: "write", token: TOKEN, cell: STATE_CELL, value: state });
+
+      const hookTimex = () => {
+        if (!timexFrame) return;
+
+        const attach = () => {
+          let doc;
+          try {
+            doc = timexFrame.contentDocument || (timexFrame.contentWindow && timexFrame.contentWindow.document);
+          } catch (_) {
+            return;
+          }
+          if (!doc || !doc.body) return;
+
+          const read = () => {
+            const el = findStateEl(doc);
+            if (!el) return;
+            const txt = norm(el.textContent);
+            if (!STATES.has(txt) || txt === lastState) return;
+            lastState = txt;
+            sendState(txt);
+          };
+
+          read();
+
+          if (observer) observer.disconnect();
+          observer = new MutationObserver(read);
+          observer.observe(doc.body, { childList: true, subtree: true, characterData: true });
+        };
+
+        timexFrame.addEventListener("load", attach, { passive: true });
+        delay(attach, 800);
+        delay(attach, 2000);
+      };
+
+      const onVisibility = () => {
+        if (document.hidden) gpsStop();
+        else {
+          gpsStart();
+          pushFullscreen(true);
+        }
+      };
+
+      const onGesture = () => tryFullscreen(false);
+
+      const wireGestures = () => {
+        const opts = { passive: true };
+        ["pointerdown", "touchstart", "click", "dblclick", "keydown"].forEach((evt) => {
+          document.addEventListener(evt, onGesture, opts);
+        });
+        window.addEventListener("focus", () => pushFullscreen(false), opts);
+        window.addEventListener("resize", () => pushFullscreen(false), opts);
+        window.addEventListener("orientationchange", () => pushFullscreen(false), opts);
+
+        if (fsPrompt) {
+          fsPrompt.addEventListener("click", () => tryFullscreen(false));
+          fsPrompt.addEventListener("pointerdown", () => tryFullscreen(false), { passive: true });
+          fsPrompt.addEventListener("touchstart", () => tryFullscreen(false), { passive: true });
+          fsPrompt.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") tryFullscreen(false);
+          });
+        }
+      };
+
+      const onFsChange = () => {
+        if (FS.isOn()) hidePrompt();
+        else delay(() => tryFullscreen(true), 250);
+      };
+
+      document.addEventListener("DOMContentLoaded", () => {
+        wireGestures();
+        pushFullscreen(true);
+        gpsStart();
+        hookTimex();
+      }, { passive: true });
+
+      document.addEventListener("visibilitychange", onVisibility, { passive: true });
+      document.addEventListener("fullscreenchange", onFsChange, { passive: true });
+      document.addEventListener("webkitfullscreenchange", onFsChange, { passive: true });
+      document.addEventListener("msfullscreenchange", onFsChange, { passive: true });
+      window.addEventListener("pagehide", gpsStop, { passive: true });
+
+      window.gpsStart = gpsStart;
+      window.gpsStop = gpsStop;
+    })();
+  </script>
+</body>
+</html>
